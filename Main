@@ -1,0 +1,41 @@
+#include <ModbusRtu.h>
+#include <Adafruit_AM2315.h>
+// registers in the slave
+uint16_t au16data[16] = {
+  3, 1415, 9265, 4, 2, 7182, 28182, 8, 0, 0, 0, 0, 0, 0, 1, -1
+};
+Adafruit_AM2315 am2315;
+float temperature, humidity;
+unsigned long tempus;
+int8_t state = 0;
+Modbus slave(1, 0, 0); // this is slave @1 and RS-232 or USB-FTDI
+
+void setup() {
+  slave.begin( 9600 ); // baud-rate at 9600
+  pinMode(10,OUTPUT);
+  if (! am2315.begin()){
+    //Serial.println("Sensor not found, check wiring & pullups!");
+     while (1);
+  }
+}
+
+void loop() {
+
+  au16data[0] = temperature;
+  au16data[1] = humidity;// update data to be read by the master to adjust the PWM
+  state = slave.poll( au16data, 16 );
+ 
+  if (state > 4) { //Si es mayor a 4 = el pedido fué correcto
+    tempus = millis() + 50; //Tiempo actual + 50ms
+    digitalWrite(10, HIGH);//Prende el led
+  }
+  if (millis() > tempus) digitalWrite(10, LOW );//Apaga el led 50ms después
+  
+  if (! am2315.readTemperatureAndHumidity(&temperature, &humidity)) {
+    //Serial.println("Failed to read data from AM2315");
+    return;
+  }
+  //Serial.print("Temp *C: "); Serial.println(temperature);
+  //Serial.print("Hum %: "); Serial.println(humidity);
+  //delay(1000);
+}
